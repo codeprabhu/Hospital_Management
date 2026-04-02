@@ -185,31 +185,38 @@ LEFT JOIN Consultation c ON p.patient_id = c.patient_id
 LEFT JOIN Appointment a ON c.consult_id = a.consult_id
 LEFT JOIN Bill b ON p.patient_id = b.patient_id;
 
-CREATE VIEW v_staff_overview AS
+CREATE VIEW v_patient_summary AS
 SELECT 
     p.patient_id,
     p.name,
-    c.consult_id,
-    a.appointment_id,
-    b.bill_id,
-    b.total_amount
+    COUNT(DISTINCT c.consult_id) AS total_consults,
+    COUNT(DISTINCT a.appointment_id) AS total_appointments,
+    SUM(b.total_amount) AS total_billed
 FROM Patient p
 LEFT JOIN Consultation c ON p.patient_id = c.patient_id
 LEFT JOIN Appointment a ON c.consult_id = a.consult_id
-LEFT JOIN Bill b ON p.patient_id = b.patient_id;
+LEFT JOIN Bill b ON p.patient_id = b.patient_id
+GROUP BY p.patient_id;
 
-CREATE VIEW v_staff_overview AS
+CREATE VIEW v_doctor_schedule AS
 SELECT 
-    p.patient_id,
-    p.name,
-    c.consult_id,
-    a.appointment_id,
-    b.bill_id,
-    b.total_amount
-FROM Patient p
-LEFT JOIN Consultation c ON p.patient_id = c.patient_id
-LEFT JOIN Appointment a ON c.consult_id = a.consult_id
-LEFT JOIN Bill b ON p.patient_id = b.patient_id;
+    d.doctor_id,
+    d.name,
+    da.available_datetime,
+    da.is_booked
+FROM Doctor d
+JOIN DoctorAvailability da ON d.doctor_id = da.doctor_id;
+
+CREATE VIEW v_prescriptions AS
+SELECT 
+    pr.prescription_id,
+    pr.consult_id,
+    d.name AS doctor_name,
+    m.name AS medicine_name,
+    pr.dosage
+FROM Prescription pr
+JOIN Doctor d ON pr.doctor_id = d.doctor_id
+JOIN Medicine m ON pr.medicine_id = m.medicine_id;
 
 
 
