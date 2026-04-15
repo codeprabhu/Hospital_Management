@@ -158,85 +158,14 @@ CREATE TABLE Payment (
     FOREIGN KEY (bill_id) REFERENCES Bill(bill_id)
 );
 
-
--- VIews (Read-only)=====
-CREATE VIEW v_doctor_consultations AS
-SELECT 
-    c.consult_id,
-    c.patient_id,
-    p.name AS patient_name,
-    c.doctor_id,
-    d.name AS doctor_name,
-    c.consult_date
-FROM Consultation c
-JOIN Patient p ON c.patient_id = p.patient_id
-JOIN Doctor d ON c.doctor_id = d.doctor_id;
-
-CREATE VIEW v_staff_overview AS
-SELECT 
-    p.patient_id,
-    p.name,
-    c.consult_id,
-    a.appointment_id,
-    b.bill_id,
-    b.total_amount
-FROM Patient p
-LEFT JOIN Consultation c ON p.patient_id = c.patient_id
-LEFT JOIN Appointment a ON c.consult_id = a.consult_id
-LEFT JOIN Bill b ON p.patient_id = b.patient_id;
-
-CREATE VIEW v_patient_summary AS
-SELECT 
-    p.patient_id,
-    p.name,
-    COUNT(DISTINCT c.consult_id) AS total_consults,
-    COUNT(DISTINCT a.appointment_id) AS total_appointments,
-    SUM(b.total_amount) AS total_billed
-FROM Patient p
-LEFT JOIN Consultation c ON p.patient_id = c.patient_id
-LEFT JOIN Appointment a ON c.consult_id = a.consult_id
-LEFT JOIN Bill b ON p.patient_id = b.patient_id
-GROUP BY p.patient_id;
-
-CREATE VIEW v_doctor_schedule AS
-SELECT 
-    d.doctor_id,
-    d.name,
-    da.available_datetime,
-    da.is_booked
-FROM Doctor d
-JOIN DoctorAvailability da ON d.doctor_id = da.doctor_id;
-
-CREATE VIEW v_prescriptions AS
-SELECT 
-    pr.prescription_id,
-    pr.consult_id,
-    d.name AS doctor_name,
-    m.name AS medicine_name,
-    pr.dosage
-FROM Prescription pr
-JOIN Doctor d ON pr.doctor_id = d.doctor_id
-JOIN Medicine m ON pr.medicine_id = m.medicine_id;
-
-
-
--- Users
-CREATE USER 'admin'@'localhost' IDENTIFIED BY 'Admin@123';
-CREATE USER 'doctor'@'localhost' IDENTIFIED BY 'Doctor@123';
-CREATE USER 'staff'@'localhost' IDENTIFIED BY 'Staff@123';
-CREATE USER 'patient'@'localhost' IDENTIFIED BY 'Patient@123';
-
-GRANT ALL PRIVILEGES ON hospital.* TO 'admin'@'localhost';
-
-GRANT SELECT ON hospital.v_doctor_consultations TO 'doctor'@'localhost';
-GRANT SELECT ON hospital.v_prescriptions TO 'doctor'@'localhost';
-GRANT INSERT, UPDATE ON hospital.Prescription TO 'doctor'@'localhost';
-
-GRANT SELECT ON hospital.v_staff_overview TO 'staff'@'localhost';
-GRANT INSERT, UPDATE ON hospital.Patient TO 'staff'@'localhost';
-GRANT INSERT, UPDATE ON hospital.Bill TO 'staff'@'localhost';
-GRANT INSERT, UPDATE ON hospital.Payment TO 'staff'@'localhost';
-GRANT INSERT, UPDATE ON hospital.Admission TO 'staff'@'localhost';
-
-GRANT SELECT ON hospital.v_patient_summary TO 'patient'@'localhost';
-FLUSH PRIVILEGES;
+-- ======================
+-- USER AYTHENTICATION
+-- ======================
+CREATE TABLE User (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'doctor', 'staff', 'patient') NOT NULL,
+    linked_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
