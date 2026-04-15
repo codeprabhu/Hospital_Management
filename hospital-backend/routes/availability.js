@@ -24,9 +24,13 @@ router.get("/", (req, res) => {
         (err, result) => {
             if (err) {
                 console.error(err);
-                return res.status(500).send("DB Error");
+                return res.status(500).json({ message: "Database error" });
             }
-            res.json(result);
+
+            res.json({
+                success: true,
+                data: result
+            });
         }
     );
 });

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../config/db");
-const { checkRole, checkOwnership } = require("../middleware/auth");
+const { authenticate, checkRole, checkOwnership } = require("../middleware/auth");
 
 /*
 GET /patient/:id/dashboard
@@ -12,9 +12,11 @@ Returns full patient view
 
 router.get(
   "/:id/dashboard",
+  authenticate, // 🔥 REQUIRED
   checkRole(["patient"]),
   checkOwnership("id"),
   (req, res) => {
+
     const patient_id = req.params.id;
 
     const query = `
@@ -44,10 +46,13 @@ router.get(
     db.query(query, [patient_id], (err, result) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("DB Error");
+        return res.status(500).json({ message: "Database error" });
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result
+      });
     });
   }
 );

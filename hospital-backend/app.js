@@ -9,6 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // routes
+app.use("/auth", require("./routes/auth"));
 app.use("/appointment", require("./routes/appointment"));
 app.use("/availability", require("./routes/availability"));
 app.use("/patient", require("./routes/patient"));
@@ -18,36 +19,10 @@ app.use("/bill", require("./routes/bill"));
 app.use("/payment", require("./routes/payment"));
 app.use("/prescription", require("./routes/prescription"));
 
-// test routes
-app.get("/test-db", (req, res) => {
-    db.query("SELECT * FROM Patient", (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send("DB Error");
-        }
-        res.json(result);
-    });
-});
+const PORT = process.env.PORT || 5000;
 
-app.post("/test-add", (req, res) => {
-    const { name, age, gender } = req.body;
-
-    db.query(
-        "INSERT INTO Patient (name, age, gender) VALUES (?, ?, ?)",
-        [name, age, gender],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Inserted");
-        }
-    );
-});
-
-app.get("/", (req, res) => {
-    res.send("Backend running");
-});
-
-app.listen(5000, () => {
-    console.log("Server running on port 5000");
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
 
 app.use((err, req, res, next) => {

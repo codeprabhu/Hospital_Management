@@ -2,69 +2,98 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../config/db");
-const { checkRole } = require("../middleware/auth");
+
+const { authenticate, checkRole } = require("../middleware/auth");
+const validate = require("../middleware/validate");
+const Joi = require("joi");
+
+/*
+Validation Schemas
+*/
+const prescribeSchema = Joi.object({
+    consult_id: Joi.number().integer().required(),
+    medicine_id: Joi.number().integer().required(),
+    dosage: Joi.string().optional()
+});
+
+const availabilitySchema = Joi.object({
+    datetime: Joi.string().required()
+});
 
 /*
 POST /doctor/prescribe
-
-BODY:
-{
-  "consult_id": 1,
-  "medicine_id": 1,
-  "dosage": "2 times a day"
-}
 */
+router.post(
+    "/prescribe",
+    authenticate,
+    checkRole(["doctor"]),
+    validate(prescribeSchema),
+    (req, res) => {
 
-router.post("/prescribe", checkRole(["doctor"]), (req, res) => {
-    const { consult_id, medicine_id, dosage } = req.body;
-    const doctor_id = req.headers.user_id;
+        const { consult_id, medicine_id, dosage } = req.body;
+        const doctor_id = req.user.linked_id; // 🔥 FIXED
 
-    if (!consult_id || !medicine_id) {
-        return res.status(400).send("Missing fields");
-    }
-
-    //  STEP 1: verify doctor owns consultation
-    db.query(
-        `SELECT * FROM Consultation 
-         WHERE consult_id = ? AND doctor_id = ?`,
-        [consult_id, doctor_id],
-        (err, result) => {
-            if (err) return res.status(500).send(err);
-
-            if (result.length === 0) {
-                return res.status(403).send("Not your consultation");
-            }
-
-            //  STEP 2: insert prescription
-            db.query(
-                `INSERT INTO Prescription 
-                 (consult_id, doctor_id, medicine_id, dosage)
-                 VALUES (?, ?, ?, ?)`,
-                [consult_id, doctor_id, medicine_id, dosage],
-                (err) => {
-                    if (err) return res.status(500).send(err);
-
-                    res.send("Prescription added");
+        // STEP 1: verify doctor owns consultation
+        db.query(
+            `SELECT * FROM Consultation 
+             WHERE consult_id = ? AND doctor_id = ?`,
+            [consult_id, doctor_id],
+            (err, result) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ message: "Database error" });
                 }
-            );
-        }
-    );
-});
-router.post("/availability", checkRole(["doctor"]), (req, res) => {
-    const doctor_id = req.headers.user_id;
-    const { datetime } = req.body;
 
-    if (!datetime) {
-        return res.status(400).send("datetime required");
+                if (result.length === 0) {
+                    return res.status(403).json({ message: "Not your consultation" });
+                }
+
+                // STEP 2: insert prescription
+                db.query(
+                    `INSERT INTO Prescription 
+                     (consult_id, doctor_id, medicine_id, dosage)
+                     VALUES (?, ?, ?, ?)`,
+                    [consult_id, doctor_id, medicine_id, dosage],
+                    (err) => {
+                        if (err) {
+                            console.error(err);
+                            return res.status(500).json({ message: "Database error" });
+                        }
+
+                        res.json({ message: "Prescription added" });
+                    }
+                );
+            }
+        );
     }
+);
 
-    db.query(
-        "INSERT INTO DoctorAvailability (doctor_id, available_datetime) VALUES (?, ?)",
-        [doctor_id, datetime],
-        (err) => {
-            if (err) return res.status(500).send(err);
-            res.send("Availability added");
-        }
-    );
-});
+/*
+POST /doctor/availability
+*/
+router.post(
+    "/availability",
+    authenticate,
+    checkRole(["doctor"]),
+    validate(availabilitySchema),
+    (req, res) => {
+
+        const doctor_id = req.user.linked_id; // 🔥 FIXED
+        const { datetime } = req.body;
+
+        db.query(
+            "INSERT INTO DoctorAvailability (doctor_id, available_datetime) VALUES (?, ?)",
+            [doctor_id, datetime],
+            (err) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ message: "Database error" });
+                }
+
+                res.json({ message: "Availability added" });
+            }
+        );
+    }
+);
+
 module.exports = router;
